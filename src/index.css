@@ -1,0 +1,73 @@
+﻿/* Basic styling for the popup container */
+.popup-container {
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    width: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Styling for the title */
+.popup-title {
+    font-size: 20px;
+    margin-bottom: 16px;
+    color: #333;
+}
+
+/* Styling for the sign-in button */
+.sign-in-button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #4285F4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    text-align: center;
+    margin-top: 10px;
+    transition: background-color 0.3s;
+}
+
+/* Hover effect for the sign-in button */
+.sign-in-button:hover {
+    background-color: #357ae8;
+}
+
+/* Styling for the welcome message */
+.welcome-message {
+    margin-top: 20px;
+    font-size: 18px;
+    color: #555;
+}
+
+/* Styling for the profile picture */
+.profile-pic {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    margin-top: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Styling for a generic button */
+.button {
+    display: inline-block;
+    padding: 10px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    text-align: center;
+    margin-top: 10px;
+    transition: background-color 0.3s;
+}
+
+/* Hover effect for a generic button */
+.button:hover {
+    background-color: #45a049;
+}
