@@ -17,3 +17,15 @@ export const getEpisodeData = async (season, episode) => {
         throw error; // Rethrow error for proper handling
     }
 };
+
+export const getEpisodesList = async () => {
+    try {
+        const getEpisodesListFunction = httpsCallable(functions, 'getEpisodesList');
+        const result = await getEpisodesListFunction();
+        console.log(result.data);
+        return result.data.episodes;
+    } catch (error) {
+        console.error('Error getting episodes list:', error);
+        throw error; // Rethrow error for proper handling
+    }
+};

@@ -88,3 +88,36 @@ export const getEpisodeData = functions.https.onCall(async (data, context) => {
     );
   }
 });
+
+export const getEpisodesList = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "The user must be authenticated to call this function."
+    );
+  }
+
+  try {
+    const episodesRef = admin.firestore().collection("episodes");
+    const snapshot = await episodesRef.select("title", "episode", "season").get();
+
+    if (snapshot.empty) {
+      throw new functions.https.HttpsError("not-found", "No episodes found.");
+    }
+
+    const episodesList = snapshot.docs.map(doc => ({
+      id: doc.id,
+      title: doc.data().title,
+      episode: doc.data().episode,
+      season: doc.data().season
+    }));
+
+    return { episodes: episodesList };
+  } catch (error) {
+    console.error("Error fetching episodes list:", error);
+    throw new functions.https.HttpsError(
+      "unknown",
+      error instanceof Error ? error.message : "An unknown error occurred"
+    );
+  }
+});
