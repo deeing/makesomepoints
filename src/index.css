@@ -2,7 +2,7 @@
 .popup-container {
     padding: 20px;
     font-family: Arial, sans-serif;
-    width: 200px;
+    width: 400px;
     display: flex;
     flex-direction: column;
     justify-content: center;

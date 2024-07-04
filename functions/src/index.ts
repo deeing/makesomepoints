@@ -16,6 +16,19 @@ const fetchPlayerData = async (path: string) => {
   return playerSnapshot.data();
 };
 
+const fetchPointEvents = async (episodeRef: admin.firestore.DocumentReference) => {
+  const pointEventsRef = episodeRef.collection("pointEvents");
+  const pointEventsSnapshot = await pointEventsRef.get();
+  if (pointEventsSnapshot.empty) {
+    return [];
+  }
+
+  return pointEventsSnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
 export const getEpisodeData = functions.https.onCall(async (data, context) => {
   console.log("Function called with data:", data);
 
@@ -52,7 +65,7 @@ export const getEpisodeData = functions.https.onCall(async (data, context) => {
     }
 
     // Extract and serialize data from snapshot
-    const episodeData = snapshot.docs.map(async (doc) => {
+    const episodeDataPromises = snapshot.docs.map(async (doc) => {
       const data = doc.data();
       console.log("Document data before serialization:", data);
 
@@ -66,16 +79,20 @@ export const getEpisodeData = functions.https.onCall(async (data, context) => {
       const player2Data = await fetchPlayerData(player2Path);
       const player3Data = await fetchPlayerData(player3Path);
 
-      // Add player data to episode data
+      // Fetch point events data
+      const pointEvents = await fetchPointEvents(doc.ref);
+
+      // Add player and point events data to episode data
       return {
         ...data,
         player1: player1Data,
         player2: player2Data,
         player3: player3Data,
+        pointEvents,
       };
     });
 
-    const resolvedEpisodeData = await Promise.all(episodeData);
+    const resolvedEpisodeData = await Promise.all(episodeDataPromises);
 
     console.log("Episode data retrieved and serialized successfully:", resolvedEpisodeData);
 
