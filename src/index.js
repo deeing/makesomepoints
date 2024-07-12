@@ -31,6 +31,18 @@ const App = () => {
     const [selectedEpisode, setSelectedEpisode] = useState(null);
     const [episodeData, setEpisodeData] = useState(null);
 
+    useEffect(() => {
+        chrome.storage.local.get("userInfo", function (data) {
+            if (data.userInfo) {
+                setUserInfo(data.userInfo);
+                // Fetch episodes list as the user is already signed in
+                fetchEpisodesList();
+            } else {
+                console.log("No user information found. Please log in.");
+            }
+        });
+    }, []);
+
     const fetchEpisodesList = async () => {
         try {
             const episodes = await getEpisodesList();
@@ -58,16 +70,30 @@ const App = () => {
 
                 await saveUserInfoToFirestore(user);
 
-                setUserInfo({
+                const userInfo = {
                     name: user.displayName,
                     picture: user.photoURL,
-                });
+                    token: token,
+                    uid: user.uid,
+                    email: user.email,
+                };
+
+                // Store user info in chrome.storage.local
+                chrome.storage.local.set({ userInfo: userInfo });
+
+                setUserInfo(userInfo);
 
                 // Fetch episodes list after successful sign-in
                 await fetchEpisodesList();
             } catch (error) {
                 console.error('Error signing in:', error);
             }
+        });
+    };
+
+    const handleLogout = () => {
+        chrome.storage.local.remove("userInfo", function () {
+            setUserInfo(null);
         });
     };
 
@@ -116,6 +142,7 @@ const App = () => {
                     <div>
                         <h2 className="welcome-message">Welcome, {userInfo.name}</h2>
                         <img className="profile-pic" src={userInfo.picture} alt="Profile" />
+                        <button className="sign-out-button" onClick={handleLogout}>Sign out</button>
 
                         <div>
                             <label htmlFor="season-select">Select Season:</label>

@@ -1,13 +1,22 @@
-﻿// background.js
+﻿chrome.runtime.onInstalled.addListener(function () {
+    chrome.identity.getAuthToken({ interactive: true }, function (token) {
+        if (chrome.runtime.lastError) {
+            console.log(chrome.runtime.lastError);
+            return;
+        }
+        // Store the token in chrome.storage
+        chrome.storage.local.set({ token: token });
+    });
+});
 
-// Listen for messages from the popup or content scripts
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('Received message in service worker:', message);
-
-    if (message.type === 'GREETINGS') {
-        sendResponse({ message: 'Hello from service worker!' });
-    }
-
-    // Return true to indicate that the response will be sent asynchronously
-    return true;
+chrome.runtime.onStartup.addListener(function () {
+    // Retrieve the token from chrome.storage
+    chrome.storage.local.get("token", function (data) {
+        if (data.token) {
+            console.log("Token retrieved from storage:", data.token);
+            // You can use the token to make API calls
+        } else {
+            console.log("No token found. Please log in.");
+        }
+    });
 });
