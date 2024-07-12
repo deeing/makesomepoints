@@ -32,11 +32,31 @@ const App = () => {
     const [episodeData, setEpisodeData] = useState(null);
 
     useEffect(() => {
-        chrome.storage.local.get("userInfo", function (data) {
+        chrome.storage.local.get(["userInfo", "episodes", "uniqueSeasons", "selectedSeason", "selectedEpisode"], async function (data) {
             if (data.userInfo) {
                 setUserInfo(data.userInfo);
-                // Fetch episodes list as the user is already signed in
-                fetchEpisodesList();
+
+                // If cached episodes, seasons, selected season, and selected episode are found, use them
+                if (data.episodes && data.uniqueSeasons) {
+                    setEpisodes(data.episodes);
+                    setSeasons(data.uniqueSeasons);
+                }
+
+                if (data.selectedSeason) {
+                    setSelectedSeason(data.selectedSeason);
+                }
+
+                if (data.selectedEpisode) {
+                    setSelectedEpisode(data.selectedEpisode);
+                    const selectedEpisodeData = data.episodes.find(ep => ep.id === data.selectedEpisode);
+                    if (selectedEpisodeData) {
+                        const episodeData = await getEpisodeData(selectedEpisodeData.season, selectedEpisodeData.episode);
+                        setEpisodeData(episodeData);
+                    }
+                }
+
+                // Fetch and update episodes list from the API
+                await fetchEpisodesList();
             } else {
                 console.log("No user information found. Please log in.");
             }
@@ -46,15 +66,28 @@ const App = () => {
     const fetchEpisodesList = async () => {
         try {
             const episodes = await getEpisodesList();
-            setEpisodes(episodes);
+
             // Extract unique seasons
             const uniqueSeasons = [...new Set(episodes.map(ep => ep.season))];
-            
-            setSeasons(uniqueSeasons);
+
+            chrome.storage.local.get(["episodes", "uniqueSeasons"], function (data) {
+                // Check if fetched data is different from the cached data
+                const isEpisodesDifferent = JSON.stringify(data.episodes) !== JSON.stringify(episodes);
+                const isSeasonsDifferent = JSON.stringify(data.uniqueSeasons) !== JSON.stringify(uniqueSeasons);
+
+                if (isEpisodesDifferent || isSeasonsDifferent) {
+                    setEpisodes(episodes);
+                    setSeasons(uniqueSeasons);
+
+                    // Store updated episodes and seasons in chrome.storage.local
+                    chrome.storage.local.set({ episodes, uniqueSeasons });
+                }
+            });
         } catch (error) {
             console.error('Error fetching episodes:', error);
         }
     };
+
 
     const handleSignIn = () => {
         chrome.identity.getAuthToken({ interactive: true }, async function (token) {
@@ -92,10 +125,17 @@ const App = () => {
     };
 
     const handleLogout = () => {
-        chrome.storage.local.remove("userInfo", function () {
+        chrome.storage.local.remove(["userInfo", "episodes", "uniqueSeasons", "selectedSeason", "selectedEpisode"], function () {
             setUserInfo(null);
+            setEpisodes([]);
+            setSeasons([]);
+            setSelectedSeason(null);
+            setSelectedEpisode(null);
+            setEpisodeData(null);
         });
     };
+
+
 
     const saveUserInfoToFirestore = async (user) => {
         try {
@@ -114,23 +154,29 @@ const App = () => {
     };
 
     const handleSeasonChange = (event) => {
-        setSelectedSeason(event.target.value);
+        const selectedSeason = event.target.value;
+        setSelectedSeason(selectedSeason);
         setSelectedEpisode(null);
+
+        // Store selected season in chrome.storage.local
+        chrome.storage.local.set({ selectedSeason });
     };
 
     const handleEpisodeChange = async (event) => {
-        const episodeId = event.target.value;
-        setSelectedEpisode(episodeId);
+        const selectedEpisode = event.target.value;
+        setSelectedEpisode(selectedEpisode);
+
+        // Store selected episode in chrome.storage.local
+        chrome.storage.local.set({ selectedEpisode });
 
         try {
-            const selectedEpisodeData = episodes.find(ep => ep.id === episodeId);
+            const selectedEpisodeData = episodes.find(ep => ep.id === selectedEpisode);
             const data = await getEpisodeData(selectedEpisodeData.season, selectedEpisodeData.episode);
             setEpisodeData(data);
         } catch (error) {
             console.error('Error fetching episode data:', error);
         }
     };
-
 
     return (
         <div className="popup-container">
