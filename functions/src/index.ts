@@ -161,11 +161,10 @@ export const getUserVotes = functions.https.onCall(async (data, context) => {
   }
 
   try {
+    const episodeId = `s${season}e${episode}`;
     const userVotesRef = admin.firestore()
-      .collection("seasons")
-      .doc(season.toString())
       .collection("episodes")
-      .doc(episode.toString())
+      .doc(episodeId)
       .collection("pointEvents")
       .doc(pointEventId)
       .collection("userVotes")
@@ -214,12 +213,11 @@ export const setUserVotes = functions.https.onCall(async (data, context) => {
   }
 
   try {
+    const episodeId = `s${season}e${episode}`;
     const batch = admin.firestore().batch();
     const userVotesRef = admin.firestore()
-      .collection("seasons")
-      .doc(season.toString())
       .collection("episodes")
-      .doc(episode.toString())
+      .doc(episodeId)
       .collection("pointEvents")
       .doc(pointEventId)
       .collection("userVotes")
@@ -234,8 +232,8 @@ export const setUserVotes = functions.https.onCall(async (data, context) => {
 
     // Set new votes
     Object.keys(votes).forEach(playerId => {
-      const voteDocRef = userVotesRef.doc(`${userId}_${playerId}`);
-      batch.set(voteDocRef, { playerId, vote: votes[playerId] });
+      const voteDocRef = userVotesRef.doc(`${userId}_${votes[playerId].name}`);
+      batch.set(voteDocRef, { playerId, vote: votes[playerId].points });
     });
 
     await batch.commit();

@@ -4,14 +4,30 @@ import { getUserVotes, setUserVotes } from '../utils/api'; // Import your new AP
 import "./PointEvent.css";
 
 const PointEvent = ({ season, episode, pointEventId, player1, player2, player3, eventData, userId }) => {
-    const [userVote, setUserVote] = useState({});
+    const initialVotesData = {
+        [player1.id]: { ...player1, points: 0 },
+        [player2.id]: { ...player2, points: 0 },
+        [player3.id]: { ...player3, points: 0 },
+    };
+    
+    const [votesData, setVotesData] = useState(initialVotesData);
     const [isCollapsed, setIsCollapsed] = useState(true);
+    console.log(votesData);
 
     useEffect(() => {
         const fetchVotes = async () => {
             try {
-                const votesData = await getUserVotes(season, episode, pointEventId, userId);
-                setUserVote(votesData.votes);
+                const fetchedVotesData = await getUserVotes(season, episode, pointEventId, userId);
+                setVotesData(prevVotes => {
+                    const updatedVotes = { ...prevVotes };
+                    for (const playerId in fetchedVotesData.votes) {
+                        updatedVotes[playerId] = {
+                            ...updatedVotes[playerId],
+                            points: fetchedVotesData.votes[playerId]
+                        };
+                    }
+                    return updatedVotes;
+                });
             } catch (error) {
                 console.error('Error fetching user votes:', error);
             }
@@ -20,15 +36,22 @@ const PointEvent = ({ season, episode, pointEventId, player1, player2, player3, 
         fetchVotes();
     }, [season, episode, pointEventId, userId]);
 
-    const handleVote = (playerKey, points) => {
-        setUserVote(prevVotes => ({
+
+    const handleVote = (player, points) => {
+        setVotesData(prevVotes => ({
             ...prevVotes,
-            [playerKey]: points
+            [player.id]: {
+                ...player,
+                points: points,
+            }
         }));
 
         setUserVotes(season, episode, pointEventId, userId, {
-            ...userVote,
-            [playerKey]: points
+            ...votesData,
+            [player.id]: {
+                ...player,
+                points: points,
+            }
         }).catch(error => {
             console.error('Error setting user votes:', error);
         });
@@ -57,18 +80,18 @@ const PointEvent = ({ season, episode, pointEventId, player1, player2, player3, 
                     <h4>Point Event at {eventData.timestamp} seconds</h4>
                     <PlayerVote
                         player={player1}
-                        userVote={userVote['player1']}
-                        handleVote={(points) => handleVote('player1', points)}
+                        userVote={votesData[player1.id].points}
+                        handleVote={(points) => handleVote(player1, points)}
                     />
                     <PlayerVote
                         player={player2}
-                        userVote={userVote['player2']}
-                        handleVote={(points) => handleVote('player2', points)}
+                        userVote={votesData[player2.id].points}
+                        handleVote={(points) => handleVote(player2, points)}
                     />
                     <PlayerVote
                         player={player3}
-                        userVote={userVote['player3']}
-                        handleVote={(points) => handleVote('player3', points)}
+                        userVote={votesData[player3.id].points}
+                        handleVote={(points) => handleVote(player3, points)}
                     />
                     <button onClick={testGetUserVotes}>Test Get User Votes</button>
                 </div>
