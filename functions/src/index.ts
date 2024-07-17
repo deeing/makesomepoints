@@ -195,6 +195,77 @@ export const getUserVotes = functions.https.onCall(async (data, context) => {
   }
 });
 
+/**
+ * TODO: Figure out why majority is not returning anything!
+ */
+export const getMajorityVotes = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "The user must be authenticated to call this function."
+    );
+  }
+
+  const { season, episode, pointEventId } = data;
+
+  if (typeof season !== "number" || typeof episode !== "number" || typeof pointEventId !== "string") {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Season, episode, and pointEventId must be provided and must be of the correct type."
+    );
+  }
+
+  try {
+    const episodeId = `s${season}e${episode}`;
+    const userVotesRef = admin.firestore()
+      .collection("episodes")
+      .doc(episodeId)
+      .collection("pointEvents")
+      .doc(pointEventId)
+      .collection("userVotes");
+
+    const userVotesSnapshot = await userVotesRef.get();
+
+    if (userVotesSnapshot.empty) {
+      return { majorityVotes: {} };
+    }
+
+    const votesCount: { [playerId: string]: { [vote: number]: number } } = {};
+
+    // Aggregate all votes
+    await Promise.all(userVotesSnapshot.docs.map(async doc => {
+      const snapshot = await doc.ref.collection("userVotePoints").get();
+      snapshot.forEach(voteDoc => {
+        const data = voteDoc.data();
+        if (data && typeof data.playerId === 'string' && typeof data.vote === 'number') {
+          if (!votesCount[data.playerId]) {
+            votesCount[data.playerId] = { 0: 0, 1: 0, 2: 0, 3: 0 };
+          }
+          votesCount[data.playerId][data.vote] = (votesCount[data.playerId][data.vote] || 0) + 1;
+        }
+      });
+    }));
+
+    // Determine the majority vote for each player
+    const majorityVotes: { [playerId: string]: number } = {};
+    for (const playerId in votesCount) {
+      const playerVotes = votesCount[playerId];
+      const majorityVote = (Object.keys(playerVotes) as string[]).reduce((a, b) =>
+        playerVotes[parseInt(a)] > playerVotes[parseInt(b)] ? a : b
+      );
+      majorityVotes[playerId] = parseInt(majorityVote, 10);
+    }
+
+    return { majorityVotes };
+  } catch (error) {
+    console.error("Error fetching majority votes:", error);
+    throw new functions.https.HttpsError(
+      "unknown",
+      error instanceof Error ? error.message : "An unknown error occurred"
+    );
+  }
+});
+
 export const setUserVotes = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(

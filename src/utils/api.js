@@ -60,3 +60,14 @@ export const setUserVotes = async (season, episode, pointEventId, userId, votes)
         throw error;
     }
 };
+
+export const getMajorityVotes = async (season, episode, pointEventId) => {
+    try {
+        const getMajorityVotesFunction = httpsCallable(functions, 'getMajorityVotes');
+        const result = await getMajorityVotesFunction({ season, episode, pointEventId });
+        return result.data;
+    } catch (error) {
+        console.error('Error getting majority votes:', error);
+        throw error;
+    }
+};

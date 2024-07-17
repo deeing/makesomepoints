@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import PlayerVote from './PlayerVote';
-import { getUserVotes, setUserVotes } from '../utils/api'; // Import your new API functions
+import {getMajorityVotes, getUserVotes, setUserVotes} from '../utils/api'; // Import your new API functions
 import "./PointEvent.css";
 
 const PointEvent = ({ season, episode, pointEventId, player1, player2, player3, eventData, userId }) => {
@@ -70,6 +70,15 @@ const PointEvent = ({ season, episode, pointEventId, player1, player2, player3, 
         }
     };
 
+    const testGetMajorityVotes = async () => {
+        try {
+            const majorityVotesData = await getMajorityVotes(season, episode, pointEventId);
+            console.log('Fetched majority votes:', majorityVotesData);
+        } catch (error) {
+            console.error('Error fetching majority votes:', error);
+        }
+    };
+
     return (
         <div className="point-event">
             <div className="point-event-header" onClick={toggleCollapse}>
@@ -94,6 +103,7 @@ const PointEvent = ({ season, episode, pointEventId, player1, player2, player3, 
                         handleVote={(points) => handleVote(player3, points)}
                     />
                     <button onClick={testGetUserVotes}>Test Get User Votes</button>
+                    <button onClick={testGetMajorityVotes}>Test Get Majority Votes</button>
                 </div>
             )}
         </div>
