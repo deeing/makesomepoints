@@ -85,9 +85,9 @@ export const getEpisodeData = functions.https.onCall(async (data, context) => {
       // Add player and point events data to episode data
       return {
         ...data,
-        player1: player1Data,
-        player2: player2Data,
-        player3: player3Data,
+        player1: { id: player1Path, ...player1Data },
+        player2: { id: player2Path, ...player2Data },
+        player3: { id: player3Path, ...player3Data },
         pointEvents,
       };
     });

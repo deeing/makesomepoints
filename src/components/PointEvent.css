@@ -1,0 +1,41 @@
+﻿.point-event {
+    border: 1px solid #ddd;
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.point-event-header {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.point-event-header h4 {
+    margin: 0;
+}
+
+.point-event-content {
+    margin-top: 10px;
+}
+
+.vote-buttons button {
+    padding: 15px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.vote-buttons button.selected {
+    background: green;
+}
+
+.vote-buttons {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+}
+
+.player-vote {
+    margin: 10px 0;
+}

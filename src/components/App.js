@@ -96,7 +96,7 @@ const App = () => {
 
         signOut();
     };
-
+    
     return (
         <div className="popup-container">
             <h1 className="popup-title">Make Some Points</h1>
@@ -118,7 +118,12 @@ const App = () => {
                                 setEpisodeData={setEpisodeData} 
                             />
                         )}
-                        {episodeData && <EpisodeData data={episodeData} />}
+                        {episodeData && (
+                            <EpisodeData 
+                                data={episodeData?.episodeData?.[0]} 
+                                userId={userInfo.uid} 
+                            />
+                        )}
                     </div>
                 )
             }
