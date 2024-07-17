@@ -40,3 +40,23 @@ export const fetchEpisodesList = async () => {
         throw error;
     }
 };
+
+export const getUserVotes = async (season, episode, pointEventId, userId) => {
+    try {
+        const getUserVotesFunction = httpsCallable(functions, 'getUserVotes');
+        const result = await getUserVotesFunction({ season, episode, pointEventId, userId });
+        return result.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const setUserVotes = async (season, episode, pointEventId, userId, votes) => {
+    try {
+        const setUserVotesFunction = httpsCallable(functions, 'setUserVotes');
+        await setUserVotesFunction({ season, episode, pointEventId, userId, votes });
+        return { success: true };
+    } catch (error) {
+        throw error;
+    }
+};

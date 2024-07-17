@@ -1,39 +1,52 @@
 ﻿import React, { useState, useEffect } from 'react';
 import PlayerVote from './PlayerVote';
+import { getUserVotes, setUserVotes } from '../utils/api'; // Import your new API functions
 import "./PointEvent.css";
 
-const PointEvent = ({ player1, player2, player3, eventData, userId }) => {
+const PointEvent = ({ season, episode, pointEventId, player1, player2, player3, eventData, userId }) => {
     const [userVote, setUserVote] = useState({});
     const [isCollapsed, setIsCollapsed] = useState(true);
 
     useEffect(() => {
-        const players = { player1, player2, player3 };
+        const fetchVotes = async () => {
+            try {
+                const votesData = await getUserVotes(season, episode, pointEventId, userId);
+                setUserVote(votesData.votes);
+            } catch (error) {
+                console.error('Error fetching user votes:', error);
+            }
+        };
 
-        Object.keys(players).forEach(playerKey => {
-            const player = players[playerKey];
-            chrome.storage.local.get([`vote_${eventData.id}_${playerKey}_${userId}`], function (result) {
-                if (result[`vote_${eventData.id}_${playerKey}_${userId}`] !== undefined) {
-                    setUserVote(prevVotes => ({
-                        ...prevVotes,
-                        [playerKey]: result[`vote_${eventData.id}_${playerKey}_${userId}`]
-                    }));
-                }
-            });
-        });
-    }, [eventData.id, player1, player2, player3, userId]);
+        fetchVotes();
+    }, [season, episode, pointEventId, userId]);
 
     const handleVote = (playerKey, points) => {
         setUserVote(prevVotes => ({
             ...prevVotes,
             [playerKey]: points
         }));
-        chrome.storage.local.set({ [`vote_${eventData.id}_${playerKey}_${userId}`]: points });
+
+        setUserVotes(season, episode, pointEventId, userId, {
+            ...userVote,
+            [playerKey]: points
+        }).catch(error => {
+            console.error('Error setting user votes:', error);
+        });
     };
 
     const toggleCollapse = () => {
         setIsCollapsed(!isCollapsed);
-    }
-    
+    };
+
+    const testGetUserVotes = async () => {
+        try {
+            const votesData = await getUserVotes(season, episode, pointEventId, userId);
+            console.log('Fetched votes:', votesData);
+        } catch (error) {
+            console.error('Error fetching user votes:', error);
+        }
+    };
+
     return (
         <div className="point-event">
             <div className="point-event-header" onClick={toggleCollapse}>
@@ -57,6 +70,7 @@ const PointEvent = ({ player1, player2, player3, eventData, userId }) => {
                         userVote={userVote['player3']}
                         handleVote={(points) => handleVote('player3', points)}
                     />
+                    <button onClick={testGetUserVotes}>Test Get User Votes</button>
                 </div>
             )}
         </div>

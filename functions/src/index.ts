@@ -138,3 +138,113 @@ export const getEpisodesList = functions.https.onCall(async (data, context) => {
     );
   }
 });
+
+interface Votes {
+  [key: string]: number;
+}
+
+export const getUserVotes = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "The user must be authenticated to call this function."
+    );
+  }
+
+  const { season, episode, pointEventId, userId } = data;
+
+  if (typeof season !== "number" || typeof episode !== "number" || typeof pointEventId !== "string" || typeof userId !== "string") {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Season, episode, pointEventId, and userId must be provided and must be of the correct type."
+    );
+  }
+
+  try {
+    const userVotesRef = admin.firestore()
+      .collection("seasons")
+      .doc(season.toString())
+      .collection("episodes")
+      .doc(episode.toString())
+      .collection("pointEvents")
+      .doc(pointEventId)
+      .collection("userVotes")
+      .doc(userId)
+      .collection("userVotePoints");
+
+    const userVotesSnapshot = await userVotesRef.get();
+
+    if (userVotesSnapshot.empty) {
+      return { votes: {} as Votes };
+    }
+
+    const votes: Votes = {};
+    userVotesSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (data && typeof data.playerId === 'string' && typeof data.vote === 'number') {
+        votes[data.playerId] = data.vote;
+      }
+    });
+
+    return { votes };
+  } catch (error) {
+    console.error("Error fetching user votes:", error);
+    throw new functions.https.HttpsError(
+      "unknown",
+      error instanceof Error ? error.message : "An unknown error occurred"
+    );
+  }
+});
+
+export const setUserVotes = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "The user must be authenticated to call this function."
+    );
+  }
+
+  const { season, episode, pointEventId, userId, votes } = data;
+
+  if (typeof season !== "number" || typeof episode !== "number" || typeof pointEventId !== "string" || typeof userId !== "string" || typeof votes !== "object") {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Season, episode, pointEventId, userId, and votes must be provided and must be of the correct type."
+    );
+  }
+
+  try {
+    const batch = admin.firestore().batch();
+    const userVotesRef = admin.firestore()
+      .collection("seasons")
+      .doc(season.toString())
+      .collection("episodes")
+      .doc(episode.toString())
+      .collection("pointEvents")
+      .doc(pointEventId)
+      .collection("userVotes")
+      .doc(userId)
+      .collection("userVotePoints");
+
+    // Delete existing votes
+    const existingVotesSnapshot = await userVotesRef.get();
+    existingVotesSnapshot.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+
+    // Set new votes
+    Object.keys(votes).forEach(playerId => {
+      const voteDocRef = userVotesRef.doc(`${userId}_${playerId}`);
+      batch.set(voteDocRef, { playerId, vote: votes[playerId] });
+    });
+
+    await batch.commit();
+    return { success: true };
+  } catch (error) {
+    console.error("Error setting user votes:", error);
+    throw new functions.https.HttpsError(
+      "unknown",
+      error instanceof Error ? error.message : "An unknown error occurred"
+    );
+  }
+});
