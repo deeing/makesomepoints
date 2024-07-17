@@ -29,3 +29,14 @@ export const getEpisodesList = async () => {
         throw error; // Rethrow error for proper handling
     }
 };
+
+export const fetchEpisodesList = async () => {
+    try {
+        const episodes = await getEpisodesList();
+        const uniqueSeasons = [...new Set(episodes.map(ep => ep.season))];
+        return { episodes, uniqueSeasons };
+    } catch (error) {
+        console.error('Error fetching episodes:', error);
+        throw error;
+    }
+};
