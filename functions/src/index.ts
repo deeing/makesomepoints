@@ -217,46 +217,65 @@ export const getMajorityVotes = functions.https.onCall(async (data, context) => 
 
   try {
     const episodeId = `s${season}e${episode}`;
-    const userVotesRef = admin.firestore()
-      .collection("episodes")
-      .doc(episodeId)
-      .collection("pointEvents")
-      .doc(pointEventId)
-      .collection("userVotes");
 
-    const userVotesSnapshot = await userVotesRef.get();
+    // Using collectionGroup to query all userVotes collections across Firestore
+    const userVotesQuery = admin.firestore()
+      .collectionGroup('userVotes')
+      .where('episodeId', '==', episodeId)
+      .where('pointEventId', '==', pointEventId);
+
+    const userVotesSnapshot = await userVotesQuery.get();
+    console.log("userVotesSnapshot size:", userVotesSnapshot.size);
 
     if (userVotesSnapshot.empty) {
-      return { majorityVotes: {} };
+      console.log("No user votes found for pointEventId:", pointEventId);
+      return { message: "No user votes found", userVotes: [] };
     }
 
     const votesCount: { [playerId: string]: { [vote: number]: number } } = {};
 
     // Aggregate all votes
     await Promise.all(userVotesSnapshot.docs.map(async doc => {
-      const snapshot = await doc.ref.collection("userVotePoints").get();
-      snapshot.forEach(voteDoc => {
-        const data = voteDoc.data();
-        if (data && typeof data.playerId === 'string' && typeof data.vote === 'number') {
-          if (!votesCount[data.playerId]) {
-            votesCount[data.playerId] = { 0: 0, 1: 0, 2: 0, 3: 0 };
+      const data = doc.data();
+      console.log("User vote data:", data);
+
+      const userVotePointsRef = doc.ref.collection("userVotePoints");
+      const userVotePointsSnapshot = await userVotePointsRef.get();
+      console.log(`userVotePoints snapshot size for user ${doc.id}:`, userVotePointsSnapshot.size);
+
+      if (userVotePointsSnapshot.empty) {
+        console.log(`No vote points found for user: ${doc.id}`);
+      } else {
+        userVotePointsSnapshot.forEach(voteDoc => {
+          const voteData = voteDoc.data();
+          console.log("Vote point data:", voteData);
+          if (voteData && typeof voteData.playerId === 'string' && typeof voteData.vote === 'number') {
+            if (!votesCount[voteData.playerId]) {
+              votesCount[voteData.playerId] = {};
+            }
+            votesCount[voteData.playerId][voteData.vote] = (votesCount[voteData.playerId][voteData.vote] || 0) + 1;
           }
-          votesCount[data.playerId][data.vote] = (votesCount[data.playerId][data.vote] || 0) + 1;
-        }
-      });
+        });
+      }
     }));
+
+    console.log("Votes count:", votesCount);
 
     // Determine the majority vote for each player
     const majorityVotes: { [playerId: string]: number } = {};
     for (const playerId in votesCount) {
       const playerVotes = votesCount[playerId];
-      const majorityVote = (Object.keys(playerVotes) as string[]).reduce((a, b) =>
+      const majorityVote = (Object.keys(playerVotes) as string[]).reduce((a: string, b: string) =>
         playerVotes[parseInt(a)] > playerVotes[parseInt(b)] ? a : b
       );
       majorityVotes[playerId] = parseInt(majorityVote, 10);
     }
 
-    return { majorityVotes };
+    console.log("Majority votes:", majorityVotes);
+    return {
+      majorityVotes,
+      userVotes: userVotesSnapshot.docs.map(doc => doc.id)
+    };
   } catch (error) {
     console.error("Error fetching majority votes:", error);
     throw new functions.https.HttpsError(
@@ -292,20 +311,23 @@ export const setUserVotes = functions.https.onCall(async (data, context) => {
       .collection("pointEvents")
       .doc(pointEventId)
       .collection("userVotes")
-      .doc(userId)
-      .collection("userVotePoints");
+      .doc(userId);
 
-    // Delete existing votes
-    const existingVotesSnapshot = await userVotesRef.get();
+    // Delete existing votes in userVotePoints sub-collection
+    const userVotePointsRef = userVotesRef.collection("userVotePoints");
+    const existingVotesSnapshot = await userVotePointsRef.get();
     existingVotesSnapshot.forEach(doc => {
       batch.delete(doc.ref);
     });
 
-    // Set new votes
+    // Set new votes in userVotePoints sub-collection
     Object.keys(votes).forEach(playerId => {
-      const voteDocRef = userVotesRef.doc(`${userId}_${votes[playerId].name}`);
+      const voteDocRef = userVotePointsRef.doc();
       batch.set(voteDocRef, { playerId, vote: votes[playerId].points });
     });
+
+    // Set the userVotes document with episodeId and pointEventId fields
+    batch.set(userVotesRef, { episodeId, pointEventId }, { merge: true });
 
     await batch.commit();
     return { success: true };
